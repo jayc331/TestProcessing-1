@@ -1,44 +1,92 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace TestProcessing_1
 {
     internal class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            Console.WriteLine("gimmefile");
-            var z = Console.ReadLine();
-            var q = File.ReadAllLines(z);
-            Dictionary<string,int> a = new Dictionary<string,int>();
-            for (int i=0; i<q.Length; i++)
+            IEnumerable<string> fileLines;
+            // Loop until a file is successfully read or the user exits.
+            while(true)
             {
-                var s = Regex.Replace(q[i],@"[^\w\s]", "").ToLower();
-                var t = s.Split(' ');
-                for (int j=0;j<t.Length;j++) 
+                Console.Write("Please enter a file path (or type 'exit' to exit): "); // An instructive prompt for the user.
+                var input = Console.ReadLine();
+                if (input == null || input.ToLower().Trim() == "exit")
                 {
-                    var w = t[j];
-                    if (w != "")
+                    return;
+                }
+                // TryFileReadLines returns a boolean value indicating success,
+                // stores the read lines in fileLines,
+                // and stores any caught exception message in errorMessage.
+                if (TryFileReadLines(input, out fileLines, out var errorMessage))
+                {
+                    break;
+                }
+                Console.WriteLine($"[!] {errorMessage}");
+            }
+            var wordCount = CountWordsInLines(fileLines);
+            LogWordCount(wordCount);
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
+        }
+        
+        private static bool TryFileReadLines(string filePath, out IEnumerable<string> fileLines, out string errorMessage)
+        {
+            try
+            {
+                // ReadLines reads and loads each line into memory as they are called for one at a time
+                // unlike ReadAllLines which loads all lines into memory upfront which consumes more memory.
+                fileLines = File.ReadLines(filePath);
+                errorMessage = null;
+                return true;
+            }
+            // Introduced error handling, storing the message in errorMessage.
+            catch (Exception e)
+            {
+                fileLines = null;
+                errorMessage = e.Message;
+                return false;
+            }
+        }
+        
+        private static Dictionary<string, int> CountWordsInLines(IEnumerable<string> fileLines)
+        {
+            var wordCount = new Dictionary<string, int>();
+            foreach (var fileLine in fileLines) // Reduced boilerplate code compared to a for-loop.
+            {
+                // Remove non-word and non-whitespace characters, and convert to lowercase.
+                var cleanedLine = Regex.Replace(fileLine, @"[^\w\s]", "").ToLower();
+                // Split the line into words between whitespace characters.
+                var lineWords = Regex.Split(cleanedLine, @"\s+");
+                foreach (var word in lineWords) // Given meaningful variable names.
+                {
+                    if (string.IsNullOrEmpty(word)) continue; // Defensive programming - Protection against cleaned and empty lines.
+                    
+                    if (wordCount.TryGetValue(word, out var count)) // Avoids double lookup in the dictionary by assigning count value for reuse.
                     {
-                        if (a.ContainsKey(w))
-                            a[w] = a[w] + 1;    
-                        else
-                            a.Add(w, 1);
+                        wordCount[word] = count + 1;
+                    }
+                    else
+                    {
+                        wordCount[word] = 1; // Matched for consistency.
                     }
                 }
             }
-            Console.WriteLine("Done");
-            foreach (var e in a)
+            return wordCount;
+        }
+
+        private static void LogWordCount(Dictionary<string, int> wordCount)
+        {
+            Console.WriteLine("Results:");
+            foreach (var wordKVPair in wordCount)
             {
-                Console.WriteLine(e.Key + ":" + e.Value);
+                Console.WriteLine($"  {wordKVPair.Key}: {wordKVPair.Value}");
             }
-            Console.WriteLine("uniquez = " + a.Count);
-            Console.ReadKey();
+            Console.WriteLine($"Total unique words: {wordCount.Count}");
         }
     }
 }
